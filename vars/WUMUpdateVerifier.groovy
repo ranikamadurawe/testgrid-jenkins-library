@@ -39,7 +39,7 @@ def call() {
     pipeline {
       agent {
         node {
-          label ""
+          label "ranika"
           customWorkspace "/testgrid/testgrid-home/jobs/${JOB_BASE_NAME}"
         }
       }

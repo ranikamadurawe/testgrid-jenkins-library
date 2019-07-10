@@ -38,7 +38,7 @@ def call() {
     pipeline {
         agent {
             node {
-                label ""
+                label "ranika"
                 customWorkspace "${props.WORKSPACE}"
             }
         }
