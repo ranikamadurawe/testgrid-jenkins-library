@@ -61,7 +61,7 @@ def call() {
   pipeline {
     agent {
       node {
-        label ""
+        label "ranika"
       }
     }
     environment {
