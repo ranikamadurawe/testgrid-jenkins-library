@@ -88,7 +88,7 @@ def getTestExecutionMap(parallel_executor_count) {
         name = commonUtils.extractInfraCombination(testplanId)
 
         tests["${name}"] = {
-            node {
+            node('ranika') {
                 stage("Parallel Executor : ${executor}") {
                     script {
                         int processFileCount = 0
