@@ -16,7 +16,6 @@
  * under the License.
  */
 
-
 import org.wso2.tg.jenkins.Logger
 import org.wso2.tg.jenkins.PipelineContext
 import org.wso2.tg.jenkins.Properties
@@ -80,11 +79,12 @@ def call() {
                                 runtime.increaseTestGridRuntimeMemory("2G", "2G")
                                 // Get testgrid.yaml from jenkins managed files
                                 if (props.TESTGRID_YAML_URL != null) {
-                                    log.info("testgrid.yaml is retrieved from ${props.TESTGRID_YAML_URL}")
+                                    log.info("The testgrid.yaml location: ${props.TESTGRID_YAML_URL}")
                                     withCredentials([string(credentialsId: "GIT_WUM_USERNAME", variable: 'user'),
                                                      string(credentialsId: "GIT_WUM_PASSWORD", variable: 'pass')]) {
                                         sh """
-                                        curl --user $user:$pass -k -o ${props.WORKSPACE}/${
+                                        set +x
+                                        curl --silent --user $user:$pass -k -o ${props.WORKSPACE}/${
                                             props.TESTGRID_YAML_LOCATION
                                         } ${props.TESTGRID_YAML_URL}
                                     """
@@ -115,18 +115,22 @@ def call() {
                                 }
 
                                 def tgYamlContent = readYaml file: "${props.WORKSPACE}/${props.TESTGRID_YAML_LOCATION}"
-                                if (tgYamlContent.isEmpty()) {
-                                    throw new Exception("Testgrid Yaml content is Empty")
+                                if (tgYamlContent.isEmpty() || tgYamlContent.infrastructureConfig == null) {
+                                    throw new Exception("Invalid testgrid.yaml file found. Aborting build.")
                                 }
                                 // We need to set the repository properties
                                 props.EMAIL_TO_LIST = tgYamlContent.emailToList
                                 props.EMAIL_TO_LIST_INFRA = tgYamlContent.infraFailureEmailToList
+                                props.IAC_PROVIDER = tgYamlContent.infrastructureConfig.iacProvider
+                                log.info("Infrastructure as code provider is: $props.IAC_PROVIDER")
                                 if (props.EMAIL_TO_LIST == null) {
                                     throw new Exception("emailToList property is not found in testgrid.yaml file")
                                 }
                                 log.info("Creating Job config in " + props.JOB_CONFIG_YAML_PATH)
+                                // Select schedule by using current build information
+                                def schedule = tgExecutor.selectSchedule(currentBuild)
                                 // Creating the job config file
-                                ws.createJobConfigYamlFile("${props.JOB_CONFIG_YAML_PATH}")
+                                ws.createJobConfigYamlFile("${props.JOB_CONFIG_YAML_PATH}", schedule)
                                 sh """
                                 echo The job-config.yaml content :
                                 cat ${props.JOB_CONFIG_YAML_PATH}
@@ -151,8 +155,7 @@ def call() {
                                 //write the new testgrid yaml file after adding new config values
                                 writeYaml file: "${props.WORKSPACE}/${props.TESTGRID_YAML_LOCATION}", data: tgYamlContent
 
-                                log.info("Generating test plans for the product : " + props.PRODUCT)
-
+                                log.info("Generating infrastructure combination plans for the product : $props.PRODUCT")
                                 tgExecutor.generateTesPlans(props.PRODUCT, props.JOB_CONFIG_YAML_PATH)
 
                                 log.info("Stashing test plans to be used in different slave nodes")
